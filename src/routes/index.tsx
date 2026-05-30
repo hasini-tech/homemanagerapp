@@ -214,12 +214,14 @@ function Index() {
   }
 
   async function handleDelete(id: string) {
-    persist(entries.filter((e) => e.id !== id));
+    const nextEntries = entries.filter((e) => e.id !== id);
+
     try {
       await deleteEntryFromDb(id);
+      persist(nextEntries);
       toast.success("நீக்கப்பட்டது · Deleted");
     } catch (error) {
-      toast.error("Server delete failed. Removed locally.");
+      toast.error("Server delete failed. Entry was not deleted from the server.");
     }
   }
 

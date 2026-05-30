@@ -92,7 +92,9 @@ async function respondFromResponse(res, response) {
 export default async function handler(req, res) {
   const protocol = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers.host || "localhost";
-  const url = new URL(req.url, `${protocol}://${host}`);
+  const originalUrl =
+    req.headers["x-vercel-original-url"] || req.headers["x-original-url"] || req.url;
+  const url = new URL(originalUrl, `${protocol}://${host}`);
   const pathname = decodeURIComponent(url.pathname);
 
   const staticFilePath = await resolveStaticFile(pathname);

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "node generate-icons.mjs && vite build",
+    "vercel-build": "npm run build",
     "build:dev": "node generate-icons.mjs && vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",

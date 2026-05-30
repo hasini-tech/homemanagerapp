@@ -41,7 +41,8 @@ type BeforeInstallPromptEvent = Event & {
 async function fetchEntriesFromDb(): Promise<KuluEntry[]> {
   const response = await fetch("/api/entries");
   if (!response.ok) {
-    throw new Error("Failed to load entries from the server.");
+    const text = await response.text();
+    throw new Error(`Failed to load entries from the server (${response.status}): ${text}`);
   }
   return (await response.json()) as KuluEntry[];
 }
@@ -53,7 +54,8 @@ async function saveEntryToDb(entry: KuluEntry): Promise<KuluEntry> {
     body: JSON.stringify(entry),
   });
   if (!response.ok) {
-    throw new Error("Failed to save entry to the server.");
+    const text = await response.text();
+    throw new Error(`Failed to save entry to the server (${response.status}): ${text}`);
   }
   return (await response.json()) as KuluEntry;
 }
@@ -63,7 +65,8 @@ async function deleteEntryFromDb(id: string): Promise<void> {
     method: "DELETE",
   });
   if (!response.ok) {
-    throw new Error("Failed to delete entry from the server.");
+    const text = await response.text();
+    throw new Error(`Failed to delete entry from the server (${response.status}): ${text}`);
   }
 }
 

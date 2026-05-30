@@ -2,12 +2,24 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import { Readable } from "stream";
-import server from "../dist/server/server.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
 const clientDist = path.join(rootDir, "dist", "client");
 const publicDir = path.join(rootDir, "public");
+
+let serverModule;
+async function getServer() {
+  if (!serverModule) {
+    try {
+      serverModule = await import("../dist/server/server.js");
+    } catch (error) {
+      console.error("Failed to import dist/server/server.js", error);
+      throw error;
+    }
+  }
+  return serverModule.default;
+}
 
 const mimeTypes = {
   ".js": "application/javascript",
@@ -105,7 +117,24 @@ export default async function handler(req, res) {
     return;
   }
 
+  if (!process.env.MONGO_URI) {
+    console.error("Missing MONGO_URI environment variable on server.");
+    res.statusCode = 500;
+    res.setHeader("content-type", "text/plain; charset=utf-8");
+    res.end("Server environment misconfigured: MONGO_URI is required.");
+    return;
+  }
+
   const request = toWebRequest(req, url.toString());
-  const response = await server.fetch(request, process.env, {});
-  await respondFromResponse(res, response);
+
+  try {
+    const server = await getServer();
+    const response = await server.fetch(request, process.env, {});
+    await respondFromResponse(res, response);
+  } catch (error) {
+    console.error("Server handler error", error);
+    res.statusCode = 500;
+    res.setHeader("content-type", "text/plain; charset=utf-8");
+    res.end(`Server error: ${error?.message ?? "unknown error"}`);
+  }
 }

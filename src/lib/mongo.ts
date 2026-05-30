@@ -2,7 +2,7 @@ import { MongoClient } from "mongodb";
 import { setServers } from "dns";
 
 const uri = process.env.MONGO_URI;
-const dbName = process.env.MONGO_DB_NAME ?? "homemanager";
+export const dbName = process.env.MONGO_DB_NAME ?? "homemanager";
 
 if (!uri) {
   throw new Error("MONGO_URI is required. Set it in your environment or in .env.local.");
@@ -18,7 +18,10 @@ let clientPromise: Promise<MongoClient> | null = null;
 
 function connectClient() {
   if (!clientPromise) {
-    clientPromise = client.connect();
+    clientPromise = client.connect().catch((error) => {
+      clientPromise = null;
+      throw error;
+    });
   }
   return clientPromise;
 }

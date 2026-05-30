@@ -6,7 +6,7 @@ dotenv.config({ path: ".env.local", override: true });
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
-import { getEntriesCollection } from "./lib/mongo";
+import { getEntriesCollection, dbName } from "./lib/mongo";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;

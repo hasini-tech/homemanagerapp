@@ -1,10 +1,8 @@
 import fs from "fs/promises";
 import path from "path";
-import { fileURLToPath } from "url";
 import { Readable } from "stream";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.resolve(__dirname, "..");
+const rootDir = process.cwd();
 const clientDist = path.join(rootDir, "dist", "client");
 const publicDir = path.join(rootDir, "public");
 
@@ -12,7 +10,8 @@ let serverModule;
 async function getServer() {
   if (!serverModule) {
     try {
-      serverModule = await import("../dist/server/server.js");
+      const serverPath = path.join(rootDir, "dist", "server", "server.js");
+      serverModule = await import(serverPath);
     } catch (error) {
       console.error("Failed to import dist/server/server.js", error);
       throw error;
@@ -55,18 +54,16 @@ async function fileExists(filePath) {
 
 async function resolveStaticFile(urlPath) {
   const normalizedPath = urlPath.replace(/^\/+/, "");
-  if (!normalizedPath) {
-    return null;
-  }
+  if (!normalizedPath) return null;
 
-  const candidates = [
-    path.join(clientDist, normalizedPath),
-    path.join(publicDir, normalizedPath)
-  ];
+  const candidates = [path.join(clientDist, normalizedPath), path.join(publicDir, normalizedPath)];
 
   for (const candidate of candidates) {
-    if (await fileExists(candidate) && (await fs.stat(candidate)).isFile()) {
-      return candidate;
+    try {
+      const st = await fs.stat(candidate);
+      if (st.isFile()) return candidate;
+    } catch (e) {
+      // ignore
     }
   }
 

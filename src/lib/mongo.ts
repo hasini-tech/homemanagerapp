@@ -68,7 +68,8 @@ function isSrvDnsError(error: unknown): boolean {
 
 async function connectWithUri(uri: string) {
   const mongoClient = new MongoClient(uri, {
-    serverSelectionTimeoutMS: 10000,
+    serverSelectionTimeoutMS: 4000,
+    connectTimeoutMS: 4000,
   });
 
   try {

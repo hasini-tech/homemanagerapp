@@ -139,6 +139,10 @@ export default {
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);
+      const url = new URL(request.url);
+      if (url.pathname === "/api/health" || url.pathname.startsWith("/api/entries")) {
+        return jsonResponse({ error: `Server error: ${errorMessage(error)}` }, 500);
+      }
       return new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },

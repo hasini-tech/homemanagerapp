@@ -1,6 +1,5 @@
 import fs from "fs/promises";
 import path from "path";
-import { Readable } from "stream";
 
 const rootDir = process.cwd();
 const clientDist = path.join(rootDir, "dist", "client");
@@ -70,12 +69,21 @@ async function resolveStaticFile(urlPath) {
   return null;
 }
 
-function toWebRequest(req, url) {
+async function readRequestBody(req) {
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
+async function toWebRequest(req, url) {
   const headers = req.headers || {};
+  const hasBody = req.method !== "GET" && req.method !== "HEAD";
   const requestInit = {
     method: req.method,
     headers,
-    body: req.method === "GET" || req.method === "HEAD" ? undefined : Readable.toWeb(req)
+    body: hasBody ? await readRequestBody(req) : undefined
   };
   return new Request(url, requestInit);
 }
@@ -114,9 +122,8 @@ export default async function handler(req, res) {
     return;
   }
 
-  const request = toWebRequest(req, url.toString());
-
   try {
+    const request = await toWebRequest(req, url.toString());
     const server = await getServer();
     const response = await server.fetch(request, process.env, {});
     await respondFromResponse(res, response);

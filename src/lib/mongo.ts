@@ -1,5 +1,10 @@
 import { MongoClient } from "mongodb";
 import { setServers } from "dns";
+import dotenv from "dotenv";
+
+// Load env vars BEFORE accessing them
+dotenv.config();
+dotenv.config({ path: ".env", override: true });
 
 const uri = process.env.MONGO_URI;
 export const dbName = process.env.MONGO_DB_NAME ?? "homemanager";

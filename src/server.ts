@@ -1,8 +1,4 @@
-import dotenv from "dotenv";
 import "./lib/error-capture";
-
-dotenv.config();
-dotenv.config({ path: ".env.local", override: true });
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";

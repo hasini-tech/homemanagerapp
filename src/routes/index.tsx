@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -283,6 +284,9 @@ function Index() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>அமைப்புகள் · Settings</DialogTitle>
+                  <DialogDescription>
+                    Add the WhatsApp number used for sharing new entries.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3 py-2">
                   <Label htmlFor="bro" className="text-base">

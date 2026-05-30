@@ -48,12 +48,22 @@ async function handleEntriesApi(request: Request, url: URL): Promise<Response> {
   }
 
   if (url.pathname === "/api/entries" && request.method === "GET") {
-    const entries = await collection.find().sort({ createdAt: -1 }).toArray();
-    return jsonResponse(entries);
+    try {
+      const entries = await collection.find().sort({ createdAt: -1 }).toArray();
+      return jsonResponse(entries);
+    } catch (error) {
+      return jsonResponse({ error: `Database read failed: ${errorMessage(error)}` }, 503);
+    }
   }
 
   if (url.pathname === "/api/entries" && request.method === "POST") {
-    const data = await request.json();
+    let data;
+    try {
+      data = await request.json();
+    } catch {
+      return jsonResponse({ error: "Invalid JSON request body." }, 400);
+    }
+
     const entry = {
       id: String(data.id ?? ""),
       name: String(data.name ?? "").trim(),
@@ -67,11 +77,15 @@ async function handleEntriesApi(request: Request, url: URL): Promise<Response> {
       return jsonResponse({ error: "Missing required entry fields." }, 400);
     }
 
-    await collection.updateOne(
-      { id: entry.id },
-      { $set: entry },
-      { upsert: true },
-    );
+    try {
+      await collection.updateOne(
+        { id: entry.id },
+        { $set: entry },
+        { upsert: true },
+      );
+    } catch (error) {
+      return jsonResponse({ error: `Database save failed: ${errorMessage(error)}` }, 503);
+    }
 
     return jsonResponse(entry, 201);
   }
@@ -81,8 +95,12 @@ async function handleEntriesApi(request: Request, url: URL): Promise<Response> {
     if (!id) {
       return jsonResponse({ error: "Entry id is required." }, 400);
     }
-    const result = await collection.deleteOne({ id });
-    return jsonResponse({ deleted: result.deletedCount === 1 });
+    try {
+      const result = await collection.deleteOne({ id });
+      return jsonResponse({ deleted: result.deletedCount === 1 });
+    } catch (error) {
+      return jsonResponse({ error: `Database delete failed: ${errorMessage(error)}` }, 503);
+    }
   }
 
   return jsonResponse({ error: "Not found" }, 404);

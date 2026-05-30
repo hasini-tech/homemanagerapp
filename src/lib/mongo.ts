@@ -54,16 +54,44 @@ let client: MongoClient | null = null;
 
 let clientPromise: Promise<MongoClient> | null = null;
 
+function isSrvDnsError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
+  return (
+    message.includes("querySrv") ||
+    code === "ENOTFOUND" ||
+    code === "ECONNREFUSED" ||
+    code === "ETIMEOUT" ||
+    code === "EAI_AGAIN"
+  );
+}
+
+async function connectWithUri(uri: string) {
+  const mongoClient = new MongoClient(uri, {
+    serverSelectionTimeoutMS: 10000,
+  });
+
+  try {
+    await mongoClient.connect();
+    client = mongoClient;
+    return mongoClient;
+  } catch (error) {
+    await mongoClient.close().catch(() => undefined);
+    throw error;
+  }
+}
+
 async function connectClient() {
   if (!clientPromise) {
-    clientPromise = resolveAtlasSrvUri(configuredUri)
-      .then(
-        (uri) =>
-          (client = new MongoClient(uri, {
-            serverSelectionTimeoutMS: 10000,
-          })),
-      )
-      .then((mongoClient) => mongoClient.connect())
+    clientPromise = connectWithUri(configuredUri)
+      .catch(async (error) => {
+        if (!configuredUri.startsWith("mongodb+srv://") || !isSrvDnsError(error)) {
+          throw error;
+        }
+
+        console.warn("MongoDB SRV lookup failed; retrying with resolved Atlas hosts.", error);
+        return connectWithUri(await resolveAtlasSrvUri(configuredUri));
+      })
       .catch((error) => {
         client = null;
         clientPromise = null;

@@ -128,6 +128,7 @@ function Index() {
         const serverEntries = await fetchEntriesFromDb();
         if (isMounted) setEntries(serverEntries);
       } catch (error) {
+        console.error("Failed to load server entries", error);
         if (isMounted) setEntries(loadEntries());
       } finally {
         if (isMounted) setLoading(false);
@@ -197,7 +198,9 @@ function Index() {
       toast.success("சேர்க்கப்பட்டது · Saved");
     } catch (error) {
       persist([entry, ...entries]);
-      toast.error("DB save failed. Entry saved locally.");
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("Failed to save entry to server", error);
+      toast.error(`DB save failed. Saved locally. ${message}`);
     }
 
     // WhatsApp message
@@ -224,7 +227,9 @@ function Index() {
       persist(nextEntries);
       toast.success("நீக்கப்பட்டது · Deleted");
     } catch (error) {
-      toast.error("Server delete failed. Entry was not deleted from the server.");
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("Delete entry failed", error);
+      toast.error(`Server delete failed. ${message}`);
     }
   }
 

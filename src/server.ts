@@ -31,6 +31,15 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 async function handleEntriesApi(request: Request, url: URL): Promise<Response> {
+  if (url.pathname === "/api/health" && request.method === "GET") {
+    try {
+      await getEntriesCollection();
+      return jsonResponse({ ok: true, dbName, mongoConfigured: !!process.env.MONGO_URI });
+    } catch (error) {
+      return jsonResponse({ ok: false, error: String(error) }, 500);
+    }
+  }
+
   const collection = await getEntriesCollection();
 
   if (url.pathname === "/api/entries" && request.method === "GET") {

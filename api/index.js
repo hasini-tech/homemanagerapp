@@ -114,14 +114,6 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (!process.env.MONGO_URI) {
-    console.error("Missing MONGO_URI environment variable on server.");
-    res.statusCode = 500;
-    res.setHeader("content-type", "text/plain; charset=utf-8");
-    res.end("Server environment misconfigured: MONGO_URI is required.");
-    return;
-  }
-
   const request = toWebRequest(req, url.toString());
 
   try {

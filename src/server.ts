@@ -26,17 +26,26 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 async function handleEntriesApi(request: Request, url: URL): Promise<Response> {
   if (url.pathname === "/api/health" && request.method === "GET") {
     try {
       await getEntriesCollection();
       return jsonResponse({ ok: true, dbName, mongoConfigured: !!process.env.MONGO_URI });
     } catch (error) {
-      return jsonResponse({ ok: false, error: String(error) }, 500);
+      return jsonResponse({ ok: false, error: errorMessage(error) }, 500);
     }
   }
 
-  const collection = await getEntriesCollection();
+  let collection;
+  try {
+    collection = await getEntriesCollection();
+  } catch (error) {
+    return jsonResponse({ error: `Database connection failed: ${errorMessage(error)}` }, 503);
+  }
 
   if (url.pathname === "/api/entries" && request.method === "GET") {
     const entries = await collection.find().sort({ createdAt: -1 }).toArray();
@@ -103,7 +112,7 @@ export default {
     try {
       const url = new URL(request.url);
 
-      if (url.pathname.startsWith("/api/entries")) {
+      if (url.pathname === "/api/health" || url.pathname.startsWith("/api/entries")) {
         return await handleEntriesApi(request, url);
       }
 

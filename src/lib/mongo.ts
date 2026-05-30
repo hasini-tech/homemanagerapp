@@ -1,34 +1,87 @@
 import { MongoClient } from "mongodb";
-import { setServers } from "dns";
+import { promises as dns, setServers } from "dns";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// Load env vars BEFORE accessing them
-dotenv.config();
-dotenv.config({ path: ".env", override: true });
+const here = path.dirname(fileURLToPath(import.meta.url));
+const envPaths = [
+  path.resolve(process.cwd(), ".env"),
+  path.resolve(here, "../../.env"),
+  path.resolve(here, "../.env"),
+];
 
-const uri = process.env.MONGO_URI;
-export const dbName = process.env.MONGO_DB_NAME ?? "homemanager";
-
-if (!uri) {
-  throw new Error("MONGO_URI is required. Set it in your environment or in .env.local.");
+for (const envPath of envPaths) {
+  dotenv.config({ path: envPath, override: true, quiet: true });
 }
 
 // Some Windows environments have broken default DNS settings for SRV lookup.
-// Force a public DNS resolver so Atlas SRV records resolve correctly.
+// Force public DNS resolvers before MongoDB Atlas SRV records are resolved.
 setServers(["8.8.8.8", "1.1.1.1"]);
 
-const client = new MongoClient(uri);
+const configuredUri = process.env.MONGO_URI;
+export const dbName = process.env.MONGO_DB_NAME ?? "homemanager";
+
+if (!configuredUri) {
+  throw new Error("MONGO_URI is required. Set it in your environment or in .env.local.");
+}
+
+async function resolveAtlasSrvUri(uri: string): Promise<string> {
+  if (!uri.startsWith("mongodb+srv://")) return uri;
+
+  const parsed = new URL(uri);
+  const srvRecords = await dns.resolveSrv(`_mongodb._tcp.${parsed.hostname}`);
+  const txtRecords = await dns.resolveTxt(parsed.hostname).catch(() => []);
+  const hosts = srvRecords
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((record) => `${record.name}:${record.port}`)
+    .join(",");
+
+  const params = new URLSearchParams(parsed.search);
+  params.set("tls", "true");
+
+  for (const record of txtRecords) {
+    const txtParams = new URLSearchParams(record.join(""));
+    txtParams.forEach((value, key) => {
+      if (!params.has(key)) params.set(key, value);
+    });
+  }
+
+  return `mongodb://${parsed.username}:${parsed.password}@${hosts}${parsed.pathname}?${params.toString()}`;
+}
+
+let client: MongoClient | null = null;
 
 let clientPromise: Promise<MongoClient> | null = null;
 
-function connectClient() {
+async function connectClient() {
   if (!clientPromise) {
-    clientPromise = client.connect().catch((error) => {
+    clientPromise = resolveAtlasSrvUri(configuredUri)
+      .then(
+        (uri) =>
+          (client = new MongoClient(uri, {
+            serverSelectionTimeoutMS: 10000,
+          })),
+      )
+      .then((mongoClient) => mongoClient.connect())
+      .catch((error) => {
+        client = null;
+        clientPromise = null;
+        throw error;
+      });
+  }
+  return clientPromise;
+}
+
+export async function closeMongoClient() {
+  if (client) {
+    await client.close().catch((error) => {
       clientPromise = null;
       throw error;
     });
+    client = null;
+    clientPromise = null;
   }
-  return clientPromise;
 }
 
 export async function getEntriesCollection() {
